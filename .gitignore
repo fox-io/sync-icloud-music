@@ -3,3 +3,24 @@ config.ini
 
 # Keep example config in repo
 !config.ini.example
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \\r
+Icon
+
+# Thumbnails
+directory/._*
+
+# Files that might appear in the root or any folder
+._*
+
+# macOS Finder metadata
+.Spotlight-V100
+.Trashes
+
+# macOS volume attributes
+.VolumeIcon.icns
