@@ -1,0 +1,5 @@
+# sync-icloud-music.ini
+SRC=/path/to/source/music
+DST=/path/to/icloud/Music
+LOG_DIR=/path/to/log/directory
+MAX_LOGS=10
