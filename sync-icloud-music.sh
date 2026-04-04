@@ -16,6 +16,7 @@ SRC=/path/to/local/music
 DST=/path/to/icloud/music
 LOG_DIR=/path/to/logs
 MAX_LOGS=10  # optional: number of recent logs to keep, 0 disables rotation
+USE_DB=yes  # optional: use sqlite cache for hashes (yes/no)
 EOF
     echo "Created example config: $EXAMPLE_FILE"
 }
@@ -38,6 +39,8 @@ if [ ! -f "$CONFIG_FILE" ]; then
 SRC=/path/to/local/music
 DST=/path/to/icloud/music
 LOG_DIR=/path/to/logs
+MAX_LOGS=10
+USE_DB=yes
 EOF
         echo "Created example config: $EXAMPLE_FILE" >&2
     fi
@@ -70,6 +73,7 @@ while IFS= read -r rawline || [ -n "$rawline" ]; do
         DST) DST="$value" ;;
         LOG_DIR) LOG_DIR="$value" ;;
         MAX_LOGS) MAX_LOGS="$value" ;;
+        USE_DB) USE_DB="$value" ;;
         *)
             echo "ERROR: unsupported config key: '$key'" >&2
             exit 1
@@ -85,10 +89,24 @@ if [ -z "$SRC" ] || [ -z "$DST" ] || [ -z "$LOG_DIR" ]; then
 fi
 
 MAX_LOGS="${MAX_LOGS:-10}"
+USE_DB="${USE_DB:-yes}"
 if ! echo "$MAX_LOGS" | grep -Eq '^[0-9]+$'; then
     echo "ERROR: MAX_LOGS must be a non-negative integer (got '$MAX_LOGS')" >&2
     exit 1
 fi
+
+case "${USE_DB,,}" in
+    yes|y|true|1)
+        USE_DB=yes
+        ;;
+    no|n|false|0)
+        USE_DB=no
+        ;;
+    *)
+        echo "ERROR: USE_DB must be yes or no (got '$USE_DB')" >&2
+        exit 1
+        ;;
+esac
 
 if [ ! -d "$SRC" ]; then
     echo "ERROR: SRC directory does not exist: $SRC" >&2
@@ -105,14 +123,78 @@ mkdir -p "$LOG_DIR" 2>/dev/null || {
     exit 1
 }
 
-LOG="$LOG_DIR/sync_music_$(date +%Y%m%d_%H%M%S).log"
+LOG="$LOG_DIR/sync_$(date +%Y%m%d_%H%M%S).log"
+DB_FILE="$LOG_DIR/sync.db"
+SKIP_DB=0
+if [ "$USE_DB" = "no" ]; then
+    SKIP_DB=1
+fi
+
+sql_escape() {
+    printf '%s' "$1" | sed "s/'/''/g"
+}
+
+db_init() {
+    if [ "$SKIP_DB" -ne 0 ]; then
+        return
+    fi
+
+    if ! command -v sqlite3 >/dev/null 2>&1; then
+        SKIP_DB=1
+        return
+    fi
+
+    sqlite3 "$DB_FILE" 'CREATE TABLE IF NOT EXISTS file_hashes(key TEXT PRIMARY KEY, mtime INTEGER, size INTEGER, hash TEXT);' 2>/dev/null || SKIP_DB=1
+}
+
+db_get_row() {
+    local key
+    key="$(sql_escape "$1")"
+    sqlite3 "$DB_FILE" "SELECT hash,mtime,size FROM file_hashes WHERE key='$key';" 2>/dev/null
+}
+
+get_cached_hash() {
+    if [ "$SKIP_DB" -ne 0 ]; then
+        return 1
+    fi
+
+    local key="$1"
+    local mtime="$2"
+    local size="$3"
+    local row cached_hash cached_mtime cached_size
+
+    row="$(db_get_row "$key")"
+    IFS='|' read -r cached_hash cached_mtime cached_size <<< "$row"
+
+    if [ -n "$cached_hash" ] && [ "$cached_mtime" = "$mtime" ] && [ "$cached_size" = "$size" ]; then
+        printf '%s' "$cached_hash"
+        return 0
+    fi
+
+    return 1
+}
+
+update_cached_hash() {
+    if [ "$SKIP_DB" -ne 0 ]; then
+        return
+    fi
+
+    local key="$(sql_escape "$1")"
+    local mtime="$2"
+    local size="$3"
+    local hash="$(sql_escape "$4")"
+
+    sqlite3 "$DB_FILE" "INSERT OR REPLACE INTO file_hashes(key,mtime,size,hash) VALUES('$key',$mtime,$size,'$hash');" 2>/dev/null || true
+}
+
+db_init
 
 # --- Log rotation ---
 if [ "$MAX_LOGS" -gt 0 ]; then
     LOGGER_FILES=()
     while IFS= read -r file; do
         LOGGER_FILES+=("$file")
-    done < <(find "$LOG_DIR" -maxdepth 1 -type f -name 'sync_music_*.log' -print0 | xargs -0 -n1 stat -f '%m %N' | sort -n | awk '{$1=""; sub(/^ /,""); print}')
+    done < <(find "$LOG_DIR" -maxdepth 1 -type f -name 'sync_*.log' -print0 | xargs -0 -n1 stat -f '%m %N' | sort -n | awk '{$1=""; sub(/^ /,""); print}')
     total=${#LOGGER_FILES[@]}
     if [ "$total" -gt "$MAX_LOGS" ]; then
         to_remove=$((total - MAX_LOGS))
@@ -125,7 +207,14 @@ fi
 echo "=== Music Sync to iCloud (Incremental) ===" | tee "$LOG"
 echo "Source:      $SRC" | tee -a "$LOG"
 echo "Destination: $DST" | tee -a "$LOG"
-echo "" | tee -a "$LOG"
+if [ "$USE_DB" = "no" ]; then
+    echo "Cache DB:    disabled by config (USE_DB=no)" | tee -a "$LOG"
+elif [ "$SKIP_DB" -eq 0 ]; then
+    echo "Cache DB:    $DB_FILE" | tee -a "$LOG"
+else
+    echo "Cache DB:    disabled (sqlite3 unavailable or init failed)" | tee -a "$LOG"
+fi
+ echo "" | tee -a "$LOG"
 
 # --- Pre-flight checks ---
 if [ ! -d "$SRC" ]; then
@@ -157,9 +246,21 @@ for artist_path in "$SRC"/*/; do
         dst_file="$DST/$rel"
         
         if [ -f "$dst_file" ]; then
-            src_hash=$(md5 -q "$src_file")
-            dst_hash=$(md5 -q "$dst_file")
-            
+            src_size=$(stat -f%z "$src_file")
+            src_mtime=$(stat -f%m "$src_file")
+            dst_size=$(stat -f%z "$dst_file")
+            dst_mtime=$(stat -f%m "$dst_file")
+
+            if ! src_hash=$(get_cached_hash "src:$src_file" "$src_mtime" "$src_size"); then
+                src_hash=$(md5 -q "$src_file")
+                update_cached_hash "src:$src_file" "$src_mtime" "$src_size" "$src_hash"
+            fi
+
+            if ! dst_hash=$(get_cached_hash "dst:$dst_file" "$dst_mtime" "$dst_size"); then
+                dst_hash=$(md5 -q "$dst_file")
+                update_cached_hash "dst:$dst_file" "$dst_mtime" "$dst_size" "$dst_hash"
+            fi
+
             if [ "$src_hash" = "$dst_hash" ]; then
                 # 3. Evict immediately after successful verification
                 # Note: Eviction only fully clears space once the upload finishes

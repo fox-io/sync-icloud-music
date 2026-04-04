@@ -1,5 +1,7 @@
 # Ignore local and sensitive config
 config.ini
+*.db
+*.log
 
 # Keep example config in repo
 !config.ini.example
