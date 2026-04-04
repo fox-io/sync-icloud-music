@@ -95,7 +95,8 @@ if ! echo "$MAX_LOGS" | grep -Eq '^[0-9]+$'; then
     exit 1
 fi
 
-case "${USE_DB,,}" in
+USE_DB_LOWER="$(printf '%s' "$USE_DB" | tr '[:upper:]' '[:lower:]')"
+case "$USE_DB_LOWER" in
     yes|y|true|1)
         USE_DB=yes
         ;;
