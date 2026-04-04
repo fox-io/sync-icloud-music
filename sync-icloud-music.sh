@@ -225,17 +225,33 @@ fi
 mkdir -p "$DST"
 # --- Main Processing Loop ---
 # This loop processes each Artist folder individually to save local disk space.
-for artist_path in "$SRC"/*/; do
-    artist_name=$(basename "$artist_path")
-    
-    echo "------------------------------------------------" | tee -a "$LOG"
-    echo "Processing Artist: $artist_name" | tee -a "$LOG"
+# Enable dotglob so artist folders beginning with a dot are included, e.g. .38 Special.
+(
+    shopt -s dotglob nullglob
+    for artist_path in "$SRC"/*/; do
+        artist_name=$(basename "$artist_path")
+        
+        echo "------------------------------------------------" | tee -a "$LOG"
+        echo "Processing Artist: $artist_name" | tee -a "$LOG"
     
     # 1. Sync current artist folder
     # --delete: remove destination files that no longer exist in source (renamed/deleted)
+    # --delete-excluded: remove excluded files from destination too
     # --inplace: prevent double-caching locally
     # --partial: handles 'Broken Pipe' by resuming partial files
-    rsync -avh --delete --progress --inplace --partial "$artist_path" "$DST/$artist_name/" 2>&1 | tee -a "$LOG"
+    rsync -avh --delete --delete-excluded --prune-empty-dirs --progress --inplace --partial \
+        --include='*/' \
+        --include='*.mp3' \
+        --include='*.m4a' \
+        --include='*.flac' \
+        --include='*.aac' \
+        --include='*.wav' \
+        --include='*.aiff' \
+        --include='*.alac' \
+        --include='*.ogg' \
+        --exclude='.*' \
+        --exclude='*' \
+        "$artist_path" "$DST/$artist_name/" 2>&1 | tee -a "$LOG"
     
     # 2. Verify current artist folder
     echo "  Verifying $artist_name..." | tee -a "$LOG"
@@ -278,13 +294,14 @@ for artist_path in "$SRC"/*/; do
                 SUB_FAIL=$((SUB_FAIL + 1))
             fi
         fi
-    done < <(find "$artist_path" -type f -print0)
+    done < <(find "$artist_path" -type f \( -iname '*.mp3' -o -iname '*.m4a' -o -iname '*.flac' -o -iname '*.aac' -o -iname '*.wav' -o -iname '*.aiff' -o -iname '*.alac' -o -iname '*.ogg' \) -print0)
     
     echo "  Summary for $artist_name: $SUB_TOTAL verified/evicted, $SUB_FAIL failed." | tee -a "$LOG"
     
     # Optional: Brief pause to let the macOS 'bird' process catch up on uploads
     sleep 2
-done
+    done
+)
 
 echo "" | tee -a "$LOG"
 echo "=== Global Sync Complete ===" | tee -a "$LOG"
