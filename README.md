@@ -11,7 +11,6 @@ A Bash script for incrementally syncing local music files to iCloud Drive on mac
 - **Audio-only Sync**: Syncs only audio files and skips hidden/non-audio items like `.DS_Store`.
 - **Log Rotation**: Automatically rotates logs to keep a configurable number of recent log files.
 - **Strict Configuration**: Requires a `config.ini` file with no hardcoded defaults for security and portability.
-- **GitHub-Friendly**: No PII in the script; configuration is external and ignored by Git.
 
 ## Prerequisites
 
