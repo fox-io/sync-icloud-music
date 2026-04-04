@@ -252,12 +252,18 @@ for artist_path in "$SRC"/*/; do
             dst_size=$(stat -f%z "$dst_file")
             dst_mtime=$(stat -f%m "$dst_file")
 
-            if ! src_hash=$(get_cached_hash "src:$src_file" "$src_mtime" "$src_size"); then
+            if src_hash=$(get_cached_hash "src:$src_file" "$src_mtime" "$src_size"); then
+                echo "  Using cached src hash for $rel" | tee -a "$LOG"
+            else
+                echo "  src hash missing for $rel; computing and storing in DB" | tee -a "$LOG"
                 src_hash=$(md5 -q "$src_file")
                 update_cached_hash "src:$src_file" "$src_mtime" "$src_size" "$src_hash"
             fi
 
-            if ! dst_hash=$(get_cached_hash "dst:$dst_file" "$dst_mtime" "$dst_size"); then
+            if dst_hash=$(get_cached_hash "dst:$dst_file" "$dst_mtime" "$dst_size"); then
+                echo "  Using cached dst hash for $rel" | tee -a "$LOG"
+            else
+                echo "  dst hash missing for $rel; computing and storing in DB" | tee -a "$LOG"
                 dst_hash=$(md5 -q "$dst_file")
                 update_cached_hash "dst:$dst_file" "$dst_mtime" "$dst_size" "$dst_hash"
             fi
