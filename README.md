@@ -7,6 +7,8 @@ A Bash script for incrementally syncing local music files to iCloud Drive on mac
 - **Incremental Sync**: Uses `rsync` to sync only changed files, preserving bandwidth and time.
 - **Artist-by-Artist Processing**: Processes each artist folder individually to minimize local disk usage.
 - **File Verification**: Verifies synced files with MD5 hashes and evicts them from local storage after successful upload.
+- **SQLite Hash Cache**: Optionally caches file hashes in `sync.db` so unchanged files don’t need to be re-hashed on every run.
+- **Audio-only Sync**: Syncs only audio files and skips hidden/non-audio items like `.DS_Store`.
 - **Log Rotation**: Automatically rotates logs to keep a configurable number of recent log files.
 - **Strict Configuration**: Requires a `config.ini` file with no hardcoded defaults for security and portability.
 - **GitHub-Friendly**: No PII in the script; configuration is external and ignored by Git.
@@ -44,8 +46,9 @@ Create a `config.ini` file in the same directory as the script. Required keys:
 
 - `SRC`: Path to your local music directory (e.g., `/Volumes/ExternalDrive/music`)
 - `DST`: Path to your iCloud Drive music directory (e.g., `/Users/username/Library/Mobile Documents/com~apple~CloudDocs/Music`)
-- `LOG_DIR`: Directory to store log files (e.g., `/Users/username/logs`)
+- `LOG_DIR`: Directory to store log files and optional `sync.db` cache (e.g., `/Users/username/logs`)
 - `MAX_LOGS`: Number of recent log files to keep (optional, default 10; set to 0 to disable rotation)
+- `USE_DB`: Optional cache toggle; `yes` enables SQLite hash caching, `no` disables it (default `yes`).
 
 Example `config.ini`:
 
@@ -80,7 +83,7 @@ The script will:
 
 ## Logs
 
-Logs are saved to `LOG_DIR/sync_music_YYYYMMDD_HHMMSS.log`. The script rotates logs based on `MAX_LOGS`, keeping the most recent files and deleting older ones.
+Logs are saved to `LOG_DIR/sync_YYYYMMDD_HHMMSS.log`. The script rotates logs based on `MAX_LOGS`, keeping the most recent files and deleting older ones. If `USE_DB=yes`, the script also creates `LOG_DIR/sync.db` to cache file hashes.
 
 ## Troubleshooting
 
