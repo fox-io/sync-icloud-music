@@ -109,7 +109,10 @@ LOG="$LOG_DIR/sync_music_$(date +%Y%m%d_%H%M%S).log"
 
 # --- Log rotation ---
 if [ "$MAX_LOGS" -gt 0 ]; then
-    mapfile -t LOGGER_FILES < <(find "$LOG_DIR" -maxdepth 1 -type f -name 'sync_music_*.log' -print0 | xargs -0 -n1 stat -f '%m %N' | sort -n | awk '{$1=""; sub(/^ /,""); print}')
+    LOGGER_FILES=()
+    while IFS= read -r file; do
+        LOGGER_FILES+=("$file")
+    done < <(find "$LOG_DIR" -maxdepth 1 -type f -name 'sync_music_*.log' -print0 | xargs -0 -n1 stat -f '%m %N' | sort -n | awk '{$1=""; sub(/^ /,""); print}')
     total=${#LOGGER_FILES[@]}
     if [ "$total" -gt "$MAX_LOGS" ]; then
         to_remove=$((total - MAX_LOGS))
