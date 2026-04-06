@@ -1,6 +1,8 @@
-# config.ini
-SRC=/path/to/source/music
-DST=/path/to/icloud/Music
-LOG_DIR=/path/to/log/directory
-MAX_LOGS=10
+# config.ini.example
+# Copy this file to config.ini and edit values.
+
+SRC=/path/to/local/music
+DST=/path/to/icloud/music
+LOG_DIR=/path/to/logs
+MAX_LOGS=10  # optional: number of recent logs to keep, 0 disables rotation
 USE_DB=yes  # optional: use sqlite cache for hashes (yes/no)
