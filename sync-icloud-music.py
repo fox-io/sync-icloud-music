@@ -379,8 +379,6 @@ def main() -> None:
 
     cache = HashCache(str(db_path), disabled=(use_db == 'no'))
 
-    rotate_logs(log_dir, max_logs)
-
     logger = Logger(str(log_path))
 
     logger.log("=== Music Sync to iCloud (Incremental) ===")
@@ -425,6 +423,8 @@ def main() -> None:
 
     cache.close()
     logger.close()
+
+    rotate_logs(log_dir, max_logs)
 
 
 if __name__ == '__main__':
