@@ -2,6 +2,8 @@
 config.ini
 *.db
 *.log
+CLAUDE.md
+logs/
 
 # Keep example config in repo
 !config.ini.example
