@@ -392,39 +392,43 @@ def main() -> None:
         logger.log("Cache DB:    disabled (sqlite3 unavailable or init failed)")
     logger.log()
 
-    # Post-logging pre-flight (mirrors the second checks in the bash script)
-    if not src.is_dir():
-        logger.log("ERROR: Source not found. Is the source mounted?")
-        sys.exit(1)
-    dst.mkdir(parents=True, exist_ok=True)
+    try:
+        # Post-logging pre-flight (mirrors the second checks in the bash script)
+        if not src.is_dir():
+            logger.log("ERROR: Source not found. Is the source mounted?")
+            sys.exit(1)
+        dst.mkdir(parents=True, exist_ok=True)
 
-    # Process each artist directory; iterdir() includes hidden dirs (e.g. .38 Special)
-    artist_dirs = sorted(
-        (p for p in src.iterdir() if p.is_dir()),
-        key=lambda p: p.name,
-    )
+        # Process each artist directory; iterdir() includes hidden dirs (e.g. .38 Special)
+        artist_dirs = sorted(
+            (p for p in src.iterdir() if p.is_dir()),
+            key=lambda p: p.name,
+        )
 
-    for artist_path in artist_dirs:
-        sync_artist(artist_path, src, dst, cache, logger)
+        for artist_path in artist_dirs:
+            sync_artist(artist_path, src, dst, cache, logger)
 
-    # Clean up orphaned artist directories in destination
-    existing_artists = {p.name for p in artist_dirs}
-    for dst_artist in dst.iterdir():
-        if dst_artist.is_dir() and dst_artist.name not in existing_artists:
-            logger.log(f"Removing orphaned artist directory: {dst_artist.name}")
-            try:
-                shutil.rmtree(dst_artist)
-            except OSError as e:
-                logger.log(f"Failed to remove {dst_artist}: {e}")
+        # Clean up orphaned artist directories in destination
+        existing_artists = {p.name for p in artist_dirs}
+        for dst_artist in dst.iterdir():
+            if dst_artist.is_dir() and dst_artist.name not in existing_artists:
+                logger.log(f"Removing orphaned artist directory: {dst_artist.name}")
+                try:
+                    shutil.rmtree(dst_artist)
+                except OSError as e:
+                    logger.log(f"Failed to remove {dst_artist}: {e}")
 
-    logger.log()
-    logger.log("=== Global Sync Complete ===")
-    logger.log(f"Full log saved to: {log_path}")
+        logger.log()
+        logger.log("=== Global Sync Complete ===")
+        logger.log(f"Full log saved to: {log_path}")
 
-    cache.close()
-    logger.close()
+    except KeyboardInterrupt:
+        logger.log("Sync interrupted by user")
 
-    rotate_logs(log_dir, max_logs)
+    finally:
+        cache.close()
+        logger.close()
+        rotate_logs(log_dir, max_logs)
 
 
 if __name__ == '__main__':
