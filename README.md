@@ -1,6 +1,6 @@
 # sync-icloud-music
 
-A Bash script for incrementally syncing local music files to iCloud Drive on macOS, with artist-by-artist processing, file verification, and automatic log rotation.
+A Python script for incrementally syncing local music files to iCloud Drive on macOS, with artist-by-artist processing, file verification, and automatic log rotation.
 
 ## Features
 
@@ -15,9 +15,8 @@ A Bash script for incrementally syncing local music files to iCloud Drive on mac
 ## Prerequisites
 
 - macOS (tested on macOS Tahoe)
-- Bash (default shell)
+- Python 3.7+
 - `rsync` (pre-installed on macOS)
-- `md5` (pre-installed on macOS)
 - `brctl` (for iCloud eviction, part of macOS)
 
 ## Installation
@@ -30,7 +29,7 @@ A Bash script for incrementally syncing local music files to iCloud Drive on mac
 
 2. Initialize the example configuration:
    ```bash
-   ./sync-icloud-music.sh --init
+   ./sync-icloud-music.py --init
    ```
 
 3. Copy and edit the configuration:
@@ -65,7 +64,7 @@ MAX_LOGS=10
 Run the script:
 
 ```bash
-./sync-icloud-music.sh
+./sync-icloud-music.py
 ```
 
 The script will:

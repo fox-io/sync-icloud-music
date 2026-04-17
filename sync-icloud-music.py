@@ -345,10 +345,21 @@ def sync_artist(
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    if len(sys.argv) > 1 and sys.argv[1] == '--init':
-        create_example()
-        print(f"Run: cp {EXAMPLE_FILE} {CONFIG_FILE} && edit values")
-        sys.exit(0)
+    starts_with_filter = None
+    # Handle command-line arguments
+    args = sys.argv[1:]
+    for arg in args:
+        if arg == '--init':
+            create_example()
+            print(f"Run: cp {EXAMPLE_FILE} {CONFIG_FILE} && edit values")
+            sys.exit(0)
+        elif arg.startswith('--starts-with='):
+            value = arg.split('=', 1)[1]
+            if len(value) == 1 and value.isalnum():
+                starts_with_filter = value.lower()
+            else:
+                print("ERROR: --starts-with value must be a single alphanumeric character.", file=sys.stderr)
+                sys.exit(1)
 
     config = load_config()
 
@@ -400,23 +411,33 @@ def main() -> None:
         dst.mkdir(parents=True, exist_ok=True)
 
         # Process each artist directory; iterdir() includes hidden dirs (e.g. .38 Special)
-        artist_dirs = sorted(
+        all_artist_dirs = sorted(
             (p for p in src.iterdir() if p.is_dir()),
             key=lambda p: p.name,
         )
 
-        for artist_path in artist_dirs:
+        artist_dirs_to_sync = all_artist_dirs
+        if starts_with_filter:
+            logger.log(f"Filtering artists to those starting with '{starts_with_filter}' (case-insensitive).")
+            artist_dirs_to_sync = [
+                p for p in all_artist_dirs if p.name.lower().startswith(starts_with_filter)
+            ]
+
+        for artist_path in artist_dirs_to_sync:
             sync_artist(artist_path, src, dst, cache, logger)
 
         # Clean up orphaned artist directories in destination
-        existing_artists = {p.name for p in artist_dirs}
-        for dst_artist in dst.iterdir():
-            if dst_artist.is_dir() and dst_artist.name not in existing_artists:
-                logger.log(f"Removing orphaned artist directory: {dst_artist.name}")
-                try:
-                    shutil.rmtree(dst_artist)
-                except OSError as e:
-                    logger.log(f"Failed to remove {dst_artist}: {e}")
+        if starts_with_filter:
+            logger.log("Skipping orphan directory cleanup due to --starts-with filter.")
+        else:
+            existing_artists = {p.name for p in all_artist_dirs}
+            for dst_artist in dst.iterdir():
+                if dst_artist.is_dir() and dst_artist.name not in existing_artists:
+                    logger.log(f"Removing orphaned artist directory: {dst_artist.name}")
+                    try:
+                        shutil.rmtree(dst_artist)
+                    except OSError as e:
+                        logger.log(f"Failed to remove {dst_artist}: {e}")
 
         logger.log()
         logger.log("=== Global Sync Complete ===")
