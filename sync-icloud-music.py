@@ -428,8 +428,18 @@ def main() -> None:
 
         # Clean up orphaned artist directories in destination
         if starts_with_filter:
-            logger.log("Skipping orphan directory cleanup due to --starts-with filter.")
+            logger.log("Cleaning up orphaned artist directories matching filter...")
+            source_artist_names = {p.name for p in artist_dirs_to_sync}
+            for dst_artist in dst.iterdir():
+                if dst_artist.is_dir() and dst_artist.name.lower().startswith(starts_with_filter):
+                    if dst_artist.name not in source_artist_names:
+                        logger.log(f"Removing orphaned artist directory: {dst_artist.name}")
+                        try:
+                            shutil.rmtree(dst_artist)
+                        except OSError as e:
+                            logger.log(f"Failed to remove {dst_artist}: {e}")
         else:
+            logger.log("Cleaning up all orphaned artist directories...")
             existing_artists = {p.name for p in all_artist_dirs}
             for dst_artist in dst.iterdir():
                 if dst_artist.is_dir() and dst_artist.name not in existing_artists:
