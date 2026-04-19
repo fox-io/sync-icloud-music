@@ -355,10 +355,10 @@ def main() -> None:
             sys.exit(0)
         elif arg.startswith('--starts-with='):
             value = arg.split('=', 1)[1]
-            if len(value) == 1 and value.isalnum():
+            if value:
                 starts_with_filter = value.lower()
             else:
-                print("ERROR: --starts-with value must be a single alphanumeric character.", file=sys.stderr)
+                print("ERROR: --starts-with value cannot be empty.", file=sys.stderr)
                 sys.exit(1)
 
     config = load_config()
