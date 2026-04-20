@@ -427,6 +427,7 @@ def main() -> None:
             sync_artist(artist_path, src, dst, cache, logger)
 
         # Clean up orphaned artist directories in destination
+        removed_count = 0
         if starts_with_filter:
             logger.log("Cleaning up orphaned artist directories matching filter...")
             source_artist_names = {p.name for p in artist_dirs_to_sync}
@@ -436,6 +437,7 @@ def main() -> None:
                         logger.log(f"Removing orphaned artist directory: {dst_artist.name}")
                         try:
                             shutil.rmtree(dst_artist)
+                            removed_count += 1
                         except OSError as e:
                             logger.log(f"Failed to remove {dst_artist}: {e}")
         else:
@@ -446,10 +448,14 @@ def main() -> None:
                     logger.log(f"Removing orphaned artist directory: {dst_artist.name}")
                     try:
                         shutil.rmtree(dst_artist)
+                        removed_count += 1
                     except OSError as e:
                         logger.log(f"Failed to remove {dst_artist}: {e}")
 
         logger.log()
+        if removed_count > 0:
+            plural = 'y' if removed_count == 1 else 'ies'
+            logger.log(f"Removed {removed_count} orphaned artist director{plural}.")
         logger.log("=== Global Sync Complete ===")
         logger.log(f"Full log saved to: {log_path}")
 
