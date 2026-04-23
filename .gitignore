@@ -1,58 +1,22 @@
-# Ignore local and sensitive config
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local configuration
 config.ini
-*.db
-*.log
-CLAUDE.md
+
+# Databases
+artists.sqlite3
+sync.db
+
+# Logs
 logs/
 
-# Keep example config in repo
-!config.ini.example
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
+# Virtual environment
 venv/
 .venv/
-ENV/
-env.bak/
-venv.bak/
-.Python
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git
-.mypy_cache
-.pytest_cache
-.hypothesis
 
-# macOS system files
+# macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Icon must end with two \\r
-Icon
-
-# Thumbnails
-directory/._*
-
-# Files that might appear in the root or any folder
-._*
-
-# macOS Finder metadata
-.Spotlight-V100
-.Trashes
-
-# macOS volume attributes
-.VolumeIcon.icns
